@@ -84,9 +84,10 @@ headless = headless_env in ['true', '1', 'yes']
 
 config = BrowserConfig(
     browser_binary_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    # cdp_url="http://192.168.68.124:9222",
     headless=headless,
     minimum_wait_page_load_time=1,
-    wait_for_network_idle_page_load_time=3
+    wait_for_network_idle_page_load_time=4
 )
 
 browser = Browser(config=config)
@@ -153,11 +154,10 @@ async def fetch_portfolio() -> Optional[Wealth]:
     task = (
         "Go to the following URL: "
         f"{PORTFOLIO_URL}. "
-        "Analyze the asset table on the screen. "
         "grab the net worth information."
         "grab the top 5 platforms from the chart."
-        "click on the 'Assets' switcher"
-        "grab the top 5 Assets from the chart"
+        "click on the 'Assets' switcher."
+        "grab the top 5 Assets from the chart and not from holding list"
         "Output the summary in a markdown table."
     )
     agent = Agent(
