@@ -1,6 +1,7 @@
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent, Browser, BrowserConfig, Controller
 import asyncio
 from dotenv import load_dotenv
@@ -23,6 +24,11 @@ elif llm_provider == "ollama":
     llm = ChatOllama(
         model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
         num_ctx=int(os.getenv("OLLAMA_NUM_CTX", "32000"))
+    )
+elif llm_provider == "google":
+    llm = ChatGoogleGenerativeAI(
+        model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+        api_key=os.getenv("GEMINI_API_KEY")
     )
 else:  # Default to OpenAI
     llm = ChatOpenAI(
@@ -47,14 +53,6 @@ class Wealth(BaseModel):
     top_5_holdings: List[Asset]
     net_worth: net_worth
     top_5_platforms: List[Platform]
-
-llmOpenAI = ChatOpenAI(model="o4-mini-04-16")
-
-llmAnthropic = ChatAnthropic(
-    model_name="claude-3-5-sonnet-20240620", 
-    temperature=0.0, 
-    timeout=100
-)
 
 PORTFOLIO_URL = os.getenv('PORTFOLIO_URL')
 
