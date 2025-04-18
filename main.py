@@ -1,16 +1,34 @@
+import os
+import asyncio
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from pydantic import BaseModel
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent, Browser, BrowserConfig, Controller
-import asyncio
-from dotenv import load_dotenv
-from pydantic import BaseModel
-from typing import List
+
 load_dotenv()
-import os
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from datetime import datetime, timezone
+
+# Constants for environment variable keys
+LLM_PROVIDER_KEY = "LLM_PROVIDER"
+ANTHROPIC_MODEL_KEY = "ANTHROPIC_MODEL"
+OLLAMA_MODEL_KEY = "OLLAMA_MODEL"
+OLLAMA_NUM_CTX_KEY = "OLLAMA_NUM_CTX"
+GEMINI_MODEL_KEY = "GEMINI_MODEL"
+GEMINI_API_KEY = "GEMINI_API_KEY"
+OPENAI_MODEL_KEY = "OPENAI_MODEL"
+PORTFOLIO_URL_KEY = "PORTFOLIO_URL"
+BROWSER_HEADLESS_KEY = "BROWSER_HEADLESS"
+INFLUX_URL_KEY = "INFLUX_URL"
+INFLUX_TOKEN_KEY = "INFLUX_TOKEN"
+INFLUX_ORG_KEY = "INFLUX_ORG"
+INFLUX_BUCKET_KEY = "INFLUX_BUCKET"
 
 # Choose LLM provider based on .env
 llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
@@ -45,19 +63,23 @@ class Platform(BaseModel):
     value: float
     percentage: float
 
-class net_worth(BaseModel):
+class NetWorth(BaseModel):
+    """Represents net worth and its SOL equivalent."""
     net_worth: float
     sol_equivalent: float
 
 class Wealth(BaseModel):
+    """Represents the user's portfolio summary."""
     top_5_holdings: List[Asset]
-    net_worth: net_worth
+    net_worth: NetWorth
     top_5_platforms: List[Platform]
 
-PORTFOLIO_URL = os.getenv('PORTFOLIO_URL')
+# Read configuration from environment variables
+PORTFOLIO_URL = os.getenv(PORTFOLIO_URL_KEY)
+if not PORTFOLIO_URL:
+    raise ValueError(f"{PORTFOLIO_URL_KEY} environment variable must be set.")
 
-# Read headless mode from .env (default True)
-headless_env = os.getenv('BROWSER_HEADLESS', 'true').lower()
+headless_env = os.getenv(BROWSER_HEADLESS_KEY, 'true').lower()
 headless = headless_env in ['true', '1', 'yes']
 
 config = BrowserConfig(
@@ -68,61 +90,66 @@ config = BrowserConfig(
 )
 
 browser = Browser(config=config)
-
 controller = Controller(output_model=Wealth)
-
 initial_actions = [
     {"go_to_url": {"url": PORTFOLIO_URL}}
 ]
 
-# InfluxDB helper functions
 def init_influx_client():
-    url = os.getenv('INFLUX_URL')
-    token = os.getenv('INFLUX_TOKEN')
-    org = os.getenv('INFLUX_ORG')
-    bucket = os.getenv('INFLUX_BUCKET')
+    """Initialize InfluxDB client and return client, write_api, and bucket."""
+    url = os.getenv(INFLUX_URL_KEY)
+    token = os.getenv(INFLUX_TOKEN_KEY)
+    org = os.getenv(INFLUX_ORG_KEY)
+    bucket = os.getenv(INFLUX_BUCKET_KEY)
+    if not all([url, token, org, bucket]):
+        raise ValueError("InfluxDB configuration environment variables must be set.")
     client = InfluxDBClient(url=url, token=token, org=org)
     return client, client.write_api(), bucket
 
-def write_portfolio_data(parsed: Wealth):
+def write_portfolio_data(parsed: Wealth) -> None:
+    """Write portfolio data to InfluxDB from parsed Wealth object."""
     client, write_api, bucket = init_influx_client()
-    # Net worth point
-    point_net = (
-        Point('portfolio')
-        .field('net_worth', parsed.net_worth.net_worth)
-        .field('sol_equivalent', parsed.net_worth.sol_equivalent)
-        .time(datetime.now(timezone.utc), WritePrecision.NS)
-    )
-    print(f"Writing net worth: {point_net.to_line_protocol()}")
-    write_api.write(bucket=bucket, record=point_net)
-    # Top holdings
-    for holding in parsed.top_5_holdings:
-        point_h = (
-            Point('portfolio_holding')
-            .tag('asset', holding.asset)
-            .field('percentage', holding.percentage)
-            .field('value', holding.value)
+    try:
+        # Net worth point
+        point_net = (
+            Point('portfolio')
+            .field('net_worth', parsed.net_worth.net_worth)
+            .field('sol_equivalent', parsed.net_worth.sol_equivalent)
             .time(datetime.now(timezone.utc), WritePrecision.NS)
         )
-        print(f"Writing holding: {point_h.to_line_protocol()}")
-        write_api.write(bucket=bucket, record=point_h)
-    # Top platforms
-    for plat in parsed.top_5_platforms:
-        point_p = (
-            Point('portfolio_platform')
-            .tag('platform', plat.platform)
-            .field('percentage', plat.percentage)
-            .field('value', plat.value)
-            .time(datetime.now(timezone.utc), WritePrecision.NS)
-        )
-        print(f"Writing platform: {point_p.to_line_protocol()}")
-        write_api.write(bucket=bucket, record=point_p)
-    # Properly flush and close InfluxDB client and write API
-    write_api.flush()
-    write_api.close()
-    client.close()
+        print(f"Writing net worth: {point_net.to_line_protocol()}")
+        write_api.write(bucket=bucket, record=point_net)
+        # Top holdings
+        for holding in parsed.top_5_holdings:
+            point_h = (
+                Point('portfolio_holding')
+                .tag('asset', holding.asset)
+                .field('percentage', holding.percentage)
+                .field('value', holding.value)
+                .time(datetime.now(timezone.utc), WritePrecision.NS)
+            )
+            print(f"Writing holding: {point_h.to_line_protocol()}")
+            write_api.write(bucket=bucket, record=point_h)
+        # Top platforms
+        for plat in parsed.top_5_platforms:
+            point_p = (
+                Point('portfolio_platform')
+                .tag('platform', plat.platform)
+                .field('percentage', plat.percentage)
+                .field('value', plat.value)
+                .time(datetime.now(timezone.utc), WritePrecision.NS)
+            )
+            print(f"Writing platform: {point_p.to_line_protocol()}")
+            write_api.write(bucket=bucket, record=point_p)
+        write_api.flush()
+    except Exception as e:
+        print(f"Error writing to InfluxDB: {e}")
+    finally:
+        write_api.close()
+        client.close()
 
-async def fetch_portfolio() -> Wealth:
+async def fetch_portfolio() -> Optional[Wealth]:
+    """Fetch portfolio data using the browser agent and return Wealth object."""
     task = (
         "Go to the following URL: "
         f"{PORTFOLIO_URL}. "
@@ -146,7 +173,8 @@ async def fetch_portfolio() -> Wealth:
         return None
     return Wealth.model_validate_json(result)
 
-async def main():
+async def main() -> None:
+    """Main entry point: fetch portfolio and write to InfluxDB."""
     parsed = await fetch_portfolio()
     if parsed:
         write_portfolio_data(parsed)
