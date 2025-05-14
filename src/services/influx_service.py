@@ -126,6 +126,12 @@ class InfluxService:
         except Exception as e:
             print(f"Error writing structured data to InfluxDB: {e}")
             return False
+        finally:
+            # Ensure resources are properly released
+            try:
+                write_api.flush()
+            except Exception:
+                pass
     
     @staticmethod
     def write_raw_portfolio_data(write_api: WriteApi, bucket: str, data: str, tags: Dict[str, str] = None) -> bool:
@@ -168,6 +174,12 @@ class InfluxService:
         except Exception as e:
             print(f"Error writing raw data to InfluxDB: {e}")
             return False
+        finally:
+            # Ensure resources are properly released
+            try:
+                write_api.flush()
+            except Exception:
+                pass
             
     @staticmethod
     def write_portfolio_data(write_api: WriteApi, bucket: str, data: Union[str, Wealth], tags: Dict[str, str] = None) -> bool:
@@ -183,10 +195,17 @@ class InfluxService:
         Returns:
             bool: True if successful, False otherwise
         """
-        if isinstance(data, Wealth):
-            return InfluxService.write_structured_portfolio_data(write_api, bucket, data)
-        elif isinstance(data, str):
-            return InfluxService.write_raw_portfolio_data(write_api, bucket, data, tags)
-        else:
-            print(f"Unsupported data type: {type(data)}")
-            return False
+        try:
+            if isinstance(data, Wealth):
+                return InfluxService.write_structured_portfolio_data(write_api, bucket, data)
+            elif isinstance(data, str):
+                return InfluxService.write_raw_portfolio_data(write_api, bucket, data, tags)
+            else:
+                print(f"Unsupported data type: {type(data)}")
+                return False
+        finally:
+            # Ensure resources are properly released
+            try:
+                write_api.flush()
+            except Exception:
+                pass

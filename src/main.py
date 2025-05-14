@@ -87,47 +87,61 @@ async def run_portfolio_scraper(data_type: str = "both", store_in_influxdb: bool
         # Store in InfluxDB if requested
         if store_in_influxdb:
             # Initialize InfluxDB client
-            client, write_api, bucket = InfluxService.init_client()
-            if all([client, write_api, bucket]):
-                # Determine what to write based on available data
-                if raw_data and structured_data:
-                    # Write both types of data
-                    raw_success = InfluxService.write_portfolio_data(
-                        write_api=write_api,
-                        bucket=bucket,
-                        data=raw_data,
-                        tags={"data_type": "raw"}
-                    )
-                    structured_success = InfluxService.write_portfolio_data(
-                        write_api=write_api,
-                        bucket=bucket,
-                        data=structured_data
-                    )
-                    if raw_success and structured_success:
-                        logger.info("Both raw and structured portfolio data written to InfluxDB")
-                    elif raw_success:
-                        logger.info("Only raw portfolio data written to InfluxDB")
-                    elif structured_success:
-                        logger.info("Only structured portfolio data written to InfluxDB")
+            client = None
+            write_api = None
+            try:
+                client, write_api, bucket = InfluxService.init_client()
+                if all([client, write_api, bucket]):
+                    # Determine what to write based on available data
+                    if raw_data and structured_data:
+                        # Write both types of data
+                        raw_success = InfluxService.write_portfolio_data(
+                            write_api=write_api,
+                            bucket=bucket,
+                            data=raw_data,
+                            tags={"data_type": "raw"}
+                        )
+                        structured_success = InfluxService.write_portfolio_data(
+                            write_api=write_api,
+                            bucket=bucket,
+                            data=structured_data
+                        )
+                        if raw_success and structured_success:
+                            logger.info("Both raw and structured portfolio data written to InfluxDB")
+                        elif raw_success:
+                            logger.info("Only raw portfolio data written to InfluxDB")
+                        elif structured_success:
+                            logger.info("Only structured portfolio data written to InfluxDB")
+                        else:
+                            logger.warning("Failed to write portfolio data to InfluxDB")
                     else:
-                        logger.warning("Failed to write portfolio data to InfluxDB")
+                        # Write whatever data we have
+                        success = InfluxService.write_portfolio_data(
+                            write_api=write_api,
+                            bucket=bucket,
+                            data=portfolio_data,
+                            tags={"data_type": "raw"} if isinstance(portfolio_data, str) else None
+                        )
+                        if success:
+                            logger.info("Portfolio data written to InfluxDB")
+                        else:
+                            logger.warning("Failed to write portfolio data to InfluxDB")
                 else:
-                    # Write whatever data we have
-                    success = InfluxService.write_portfolio_data(
-                        write_api=write_api,
-                        bucket=bucket,
-                        data=portfolio_data,
-                        tags={"data_type": "raw"} if isinstance(portfolio_data, str) else None
-                    )
-                    if success:
-                        logger.info("Portfolio data written to InfluxDB")
-                    else:
-                        logger.warning("Failed to write portfolio data to InfluxDB")
-                        
-                # Close client
-                client.close()
-            else:
-                logger.warning("InfluxDB client not initialized, skipping data storage")
+                    logger.warning("InfluxDB client not initialized, skipping data storage")
+            except Exception as e:
+                log_exception(e, "Error writing to InfluxDB")
+            finally:
+                # Ensure resources are properly released
+                if write_api:
+                    try:
+                        write_api.close()
+                    except Exception:
+                        pass
+                if client:
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
         
     except Exception as e:
         log_exception(e, "Error in portfolio scraper")

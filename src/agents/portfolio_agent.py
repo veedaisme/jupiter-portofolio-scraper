@@ -81,7 +81,8 @@ class PortfolioAgent:
                 "Prioritize capital preservation and risk mitigation in your data collection approach. "
                 "Capture all relevant details, including platform-specific strategies (e.g., lending, leverage, farming), asset allocations, and stablecoin exposure. "
                 "Structure the output to facilitate executive-level insights, emphasizing clarity, completeness, and actionable data."
-            )
+            ),
+            is_planner_reasoning=True,
         )
         
         try:
@@ -123,7 +124,7 @@ class PortfolioAgent:
         
         try:
             logger.info("Fetching structured portfolio data...")
-            history = await agent.run()
+            history = await agent.run(max_steps=25)
             result = history.final_result()
             if not result:
                 logger.error("No structured portfolio data found")
