@@ -3,10 +3,11 @@
 import json
 from typing import Optional, List, Dict, Any, Union, Tuple
 
+from src.config.settings import get_planner_reasoning
 from browser_use import Agent, Browser, Controller
 from langchain.schema.language_model import BaseLanguageModel
 
-from src.services.influx_service import Wealth, Asset, Platform, NetWorth
+from src.services.influx_service import Wealth
 from src.utils.logging_utils import logger
 
 
@@ -82,7 +83,7 @@ class PortfolioAgent:
                 "Capture all relevant details, including platform-specific strategies (e.g., lending, leverage, farming), asset allocations, and stablecoin exposure. "
                 "Structure the output to facilitate executive-level insights, emphasizing clarity, completeness, and actionable data."
             ),
-            is_planner_reasoning=True,
+            is_planner_reasoning=get_planner_reasoning(),
         )
         
         try:

@@ -38,6 +38,12 @@ def get_browser_headless() -> bool:
     return headless_env in ['true', '1', 'yes']
 
 
+def get_planner_reasoning() -> bool:
+    """Get the planner reasoning setting from environment variables."""
+    planner_reasoning_env = os.getenv(PLANNER_REASONING_KEY, 'true').lower()
+    return planner_reasoning_env in ['true', '1', 'yes']
+
+
 def get_llm_models() -> tuple[BaseLanguageModel, BaseLanguageModel]:
     """
     Get the LLM models based on environment variables.
