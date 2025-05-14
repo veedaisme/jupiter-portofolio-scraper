@@ -1,3 +1,13 @@
 # Core dependencies
 browser-use
 influxdb-client
+python-dotenv
+pydantic>=2.0.0
+requests
+
+# LLM providers
+langchain
+langchain-openai
+langchain-anthropic
+langchain-ollama
+langchain-google-genai

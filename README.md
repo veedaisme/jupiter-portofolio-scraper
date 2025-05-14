@@ -1,24 +1,23 @@
 # Jupiter Portfolio Scraper
 
-A Python application that uses the [`browser-use`](https://github.com/veedaisme/browser-use) automation framework and LLMs (OpenAI, Anthropic, or Ollama) to automatically scrape and analyze portfolio data from [Jupiter Portfolio](https://portfolio.jup.ag/). The results—including net worth, top assets, and platforms—are stored in InfluxDB for further analysis and visualization.
+A Python application that uses the [`browser-use`](https://github.com/veedaisme/browser-use) automation framework and LLMs (OpenAI, Anthropic, Google Gemini, or Ollama) to automatically scrape and analyze portfolio data from [Jupiter Portfolio](https://portfolio.jup.ag/). The results are stored in InfluxDB for further analysis and visualization.
 
 ## Features
 
-- High-level browser automation using [`browser-use`](https://github.com/browser-use/browser-use)
-- LLM-powered extraction and analysis (supports OpenAI, Anthropic, and Ollama)
-- Scrapes:
-  - Net worth
-  - Top 5 assets
-  - Top 5 platforms
-- Stores results in InfluxDB
+- High-level browser automation using [`browser-use`](https://github.com/veedaisme/browser-use)
+- LLM-powered extraction and analysis (supports OpenAI, Anthropic, Google Gemini, and Ollama)
+- Modular architecture for improved maintainability and testability
+- Proper error handling and logging
+- Clean separation of concerns (configuration, services, agents)
+- Stores results in InfluxDB (optional)
 - Easily configurable via `.env` file
 
 ## Requirements
 
 - Python 3.9+
-- Chrome installed (default path: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` on macOS)
-- InfluxDB instance (for storing results)
-- [`browser-use`](https://github.com/veedaisme/browser-use) package (included in this repo)
+- Chrome installed and running in debug mode
+- InfluxDB instance (optional, for storing results)
+- [`browser-use`](https://github.com/veedaisme/browser-use) package
 - API keys for your chosen LLM provider
 
 ## Setup
@@ -39,7 +38,7 @@ A Python application that uses the [`browser-use`](https://github.com/veedaisme/
     ```bash
     pip install -r requirements.txt
     # If requirements.txt is missing, install dependencies manually:
-    pip install ./browser-use langchain langchain-openai langchain-anthropic langchain-ollama python-dotenv influxdb-client pydantic
+    pip install ./browser-use langchain langchain-openai langchain-anthropic langchain-ollama langchain-google-genai python-dotenv influxdb-client pydantic requests
     ```
 
 4. **Set up your `.env` file**
@@ -50,36 +49,49 @@ A Python application that uses the [`browser-use`](https://github.com/veedaisme/
     ```
 
     Key settings:
-    - `LLM_PROVIDER` (openai, anthropic, or ollama)
+    - `LLM_PROVIDER` (openai, anthropic, google, or ollama)
     - API keys for your chosen provider
     - `PORTFOLIO_URL` (the Jupiter portfolio URL to scrape)
-    - InfluxDB connection info
+    - InfluxDB connection info (optional)
     - `BROWSER_HEADLESS` (`true` or `false`)
 
-5. **Run the app**
+5. **Start Chrome in debug mode**
     ```bash
-    python main.py
+    ./launch_chrome_debug.sh
     ```
 
-## Example Output
+6. **Run the app**
+    ```bash
+    python portfolio_scraper.py
+    ```
 
-- Console output will show the scraped data and InfluxDB writes.
-- Data is stored in your specified InfluxDB bucket for further use.
+## Project Structure
+
+```
+portfolio_scraper.py  # Main entry point script
+src/
+  ├── agents/         # Agent implementations
+  │   └── portfolio_agent.py
+  ├── config/         # Configuration modules
+  │   ├── constants.py
+  │   └── settings.py
+  ├── services/       # Service implementations
+  │   ├── browser_service.py
+  │   └── influx_service.py
+  ├── utils/          # Utility modules
+  │   └── logging_utils.py
+  └── main.py         # Main application logic
+.env                  # Environment variables
+browser-use/          # Core browser automation and agent logic
+```
 
 ## Environment Variables
 
 See `.env.example` for all available configuration options.
 
-## Project Structure
-
-```
-main.py               # Entry point
-.env                  # Environment variables
-browser-use/          # Core browser automation and agent logic (browser-use framework)
-```
-
 ## Troubleshooting
 
-- If the browser window opens even in headless mode, check your `.env` for `BROWSER_HEADLESS=true` and ensure Chrome and Playwright are up to date.
-- For SSH or InfluxDB issues, verify your credentials and network access.
-- If `.env` changes aren't applied, restart your terminal to apply new environment variables.
+- Make sure Chrome is running in debug mode before starting the application
+- If InfluxDB connection fails, the application will still run but won't store the results
+- For API key issues, verify your credentials in the `.env` file
+- Check logs for detailed error information

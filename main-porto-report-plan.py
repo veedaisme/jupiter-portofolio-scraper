@@ -75,8 +75,6 @@ if not PORTFOLIO_URL:
 headless_env = os.getenv(BROWSER_HEADLESS_KEY, 'true').lower()
 headless = headless_env in ['true', '1', 'yes']
 
-import subprocess
-import time
 import requests
 import sys
 
@@ -130,8 +128,7 @@ async def fetch_portfolio() -> Optional[str]:
         "this is crypto portfolio in solana DeFi and Spot for multiple solana wallet. "
         "i want to create a raw information about this portofolio page"
         "scan until the end of the page"
-        "grab all the information and output it in a markdown table."
-        "it's okay if the markdown follow the same layout as the web page"
+        "grab all the information and output it in a markdown format."
     )
     agent = Agent(
         task=task,
@@ -141,7 +138,14 @@ async def fetch_portfolio() -> Optional[str]:
         enable_memory=True,
         planner_llm=planner_llm,
         use_vision_for_planner=True,
-        message_context="You are a crypto portfolio expert. you are going to get all the necessary information about my portfolio position and create a portofolio markdown table as a raw data for executive report."
+        # planner_interval=2,
+        message_context=(
+            "You are a crypto portfolio expert. "
+            "get all the information about my portfolio position including the type of portofolio (DeFi and Spot)"
+            "consolidate information for each DeFi platform, whether it's liquidity pool, lending, staked, leverage, farming, rewards, etc"
+            "be thorough and don't skip any information"
+            "create a portofolio markdown format as a raw data for executive report draft analysis."
+        )
     )
     history = await agent.run()
     result = history.final_result()
